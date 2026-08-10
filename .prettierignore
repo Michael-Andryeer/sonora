@@ -1,0 +1,10 @@
+node_modules
+dist
+out
+build
+coverage
+resources/bin
+package-lock.json
+.husky/_
+.ai-plans
+docs

@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+out/
+build/
+coverage/
+
+# Bundled binaries (fetched by scripts/fetch-binaries)
+resources/bin/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+*.swp
+
+# AI planning sessions (local only — not tracked)
+.ai-plans/
+
+# Internal docs (local only — not tracked)
+docs/
+
+# Claude Code project config (local only — not tracked)
+.claude/
