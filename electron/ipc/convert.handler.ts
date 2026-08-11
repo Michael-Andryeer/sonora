@@ -36,6 +36,33 @@ function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+const META_CONCURRENCY = 4;
+
+async function prefetchMeta(items: QueueItem[], sender: WebContents): Promise<void> {
+  let index = 0;
+
+  const worker = async () => {
+    while (index < items.length) {
+      const item = items[index];
+      index += 1;
+      if (!item) break;
+      try {
+        const meta = await fetchMeta(item.url);
+        sender.send(IpcChannel.meta, {
+          id: item.id,
+          title: meta.title,
+          thumbnail: meta.thumbnail,
+        } satisfies MetaPayload);
+      } catch {
+        // metadata is best-effort; ignore failures
+      }
+    }
+  };
+
+  const workers = Array.from({ length: Math.min(META_CONCURRENCY, items.length) }, worker);
+  await Promise.all(workers);
+}
+
 function drive(initial: QueueItem[], sender: WebContents, outputDir: string): Promise<void> {
   return new Promise((resolve) => {
     let items = initial;
@@ -106,19 +133,7 @@ export function registerConvertHandler(): void {
 
     sender.send(IpcChannel.queueInit, items.map(toDto));
 
-    for (const item of items) {
-      fetchMeta(item.url)
-        .then((meta) => {
-          sender.send(IpcChannel.meta, {
-            id: item.id,
-            title: meta.title,
-            thumbnail: meta.thumbnail,
-          } satisfies MetaPayload);
-        })
-        .catch(() => {
-          // metadata is best-effort; ignore failures
-        });
-    }
+    void prefetchMeta(items, sender);
 
     await drive(items, sender, getOutputDir());
   });
