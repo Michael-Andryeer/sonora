@@ -1,4 +1,4 @@
-import { ipcMain, shell, type WebContents } from 'electron';
+import { dialog, ipcMain, shell, type WebContents } from 'electron';
 import { z } from 'zod';
 
 import {
@@ -20,7 +20,7 @@ import {
 import { parseInput } from '../core/url-parser';
 import { download } from '../services/downloader';
 import { expandPlaylist, fetchMeta } from '../services/metadata';
-import { getOutputDir } from '../services/settings';
+import { getOutputDir, setOutputDir } from '../services/settings';
 
 const textSchema = z.string().min(1);
 const idSchema = z.string();
@@ -110,6 +110,19 @@ function drive(initial: QueueItem[], sender: WebContents, outputDir: string): Pr
 export function registerConvertHandler(): void {
   ipcMain.handle(IpcChannel.outputDir, () => getOutputDir());
   ipcMain.handle(IpcChannel.openFolder, () => shell.openPath(getOutputDir()));
+
+  ipcMain.handle(IpcChannel.chooseOutputDir, async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory', 'createDirectory'],
+      defaultPath: getOutputDir(),
+    });
+    const [dir] = result.filePaths;
+    if (result.canceled || !dir) {
+      return null;
+    }
+    setOutputDir(dir);
+    return dir;
+  });
 
   ipcMain.handle(IpcChannel.convert, async (event, rawText: unknown) => {
     const text = textSchema.parse(rawText);

@@ -8,6 +8,7 @@
 export const IpcChannel = {
   appInfo: 'app:info',
   outputDir: 'output-dir',
+  chooseOutputDir: 'output-dir:choose',
   openFolder: 'folder:open',
   convert: 'convert',
   retry: 'retry',
@@ -61,6 +62,7 @@ export interface ErrorPayload {
 export interface SonoraApi {
   getAppInfo(): Promise<AppInfo>;
   getOutputDir(): Promise<string>;
+  chooseOutputDir(): Promise<string | null>;
   openFolder(): Promise<void>;
   convert(text: string): Promise<void>;
   retry(id: string): Promise<void>;

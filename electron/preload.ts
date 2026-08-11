@@ -19,6 +19,7 @@ function subscribe<T>(channel: string, callback: (payload: T) => void): () => vo
 const api: SonoraApi = {
   getAppInfo: () => ipcRenderer.invoke(IpcChannel.appInfo),
   getOutputDir: () => ipcRenderer.invoke(IpcChannel.outputDir),
+  chooseOutputDir: () => ipcRenderer.invoke(IpcChannel.chooseOutputDir),
   openFolder: () => ipcRenderer.invoke(IpcChannel.openFolder),
   convert: (text) => ipcRenderer.invoke(IpcChannel.convert, text),
   retry: (id) => ipcRenderer.invoke(IpcChannel.retry, id),

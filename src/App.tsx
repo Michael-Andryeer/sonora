@@ -37,6 +37,15 @@ export default function App() {
     });
   };
 
+  const handleChooseFolder = () => {
+    window.sonora
+      .chooseOutputDir()
+      .then((dir) => {
+        if (dir) setOutputDir(dir);
+      })
+      .catch(() => {});
+  };
+
   const hasCompleted = items.some((item) => item.status === 'done');
 
   return (
@@ -54,16 +63,23 @@ export default function App() {
       <PasteBox onConvert={handleConvert} />
 
       {banner && <p className="text-sm text-alert">{banner}</p>}
-
       <div className="flex w-full max-w-xl items-center justify-between gap-4 text-xs">
-        <button
-          onClick={() => void window.sonora.openFolder()}
-          title={outputDir}
-          className="flex min-w-0 items-center gap-1.5 font-mono text-taupe transition hover:text-cream"
-        >
-          <span aria-hidden="true">📁</span>
-          <span className="truncate">{outputDir || 'pasta de saída'}</span>
-        </button>
+        <div className="flex min-w-0 items-center gap-3">
+          <button
+            onClick={() => void window.sonora.openFolder()}
+            title={outputDir}
+            className="flex min-w-0 items-center gap-1.5 font-mono text-taupe transition hover:text-cream"
+          >
+            <span aria-hidden="true">📁</span>
+            <span className="truncate">{outputDir || 'pasta de saída'}</span>
+          </button>
+          <button
+            onClick={handleChooseFolder}
+            className="shrink-0 text-taupe transition hover:text-cream"
+          >
+            Trocar
+          </button>
+        </div>
         {hasCompleted && (
           <button
             onClick={clearCompleted}
