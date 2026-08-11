@@ -19,12 +19,12 @@ export default function PasteBox({ onConvert }: PasteBoxProps) {
         onChange={(event) => setText(event.target.value)}
         placeholder="Cole um ou vários links do YouTube (separados por espaço, vírgula ou linha), ou uma playlist…"
         rows={3}
-        className="resize-none rounded-xl border border-neutral-800 bg-neutral-900 p-4 text-sm outline-none focus:border-emerald-500"
+        className="resize-none rounded-xl border border-line bg-panel p-4 text-sm text-cream placeholder:text-taupe/70 outline-none transition focus:border-glow focus:shadow-glow"
       />
       <button
         onClick={handleConvert}
         disabled={text.trim().length === 0}
-        className="rounded-xl bg-emerald-500 px-4 py-3 font-medium text-neutral-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
+        className="rounded-xl bg-glow px-4 py-3 font-semibold tracking-wide text-ink transition hover:bg-glow-bright disabled:cursor-not-allowed disabled:opacity-30"
       >
         Converter
       </button>

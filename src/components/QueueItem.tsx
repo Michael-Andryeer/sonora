@@ -8,36 +8,47 @@ interface QueueItemProps {
 function statusLabel(item: QueueItemDto): string {
   switch (item.status) {
     case 'queued':
-      return 'Na fila';
+      return 'na fila';
     case 'active':
-      return `${item.phase === 'convert' ? 'Convertendo' : 'Baixando'}… ${Math.round(item.percent)}%`;
+      return `${item.phase === 'convert' ? 'convertendo' : 'baixando'} · ${Math.round(item.percent)}%`;
     case 'done':
-      return '✓ Pronto';
+      return 'pronto';
     case 'error':
-      return item.error ?? 'Erro';
+      return item.error ?? 'erro';
   }
+}
+
+function meterColor(status: QueueItemDto['status']): string {
+  if (status === 'error') return 'bg-alert';
+  if (status === 'done') return 'bg-signal';
+  return 'bg-glow shadow-glow';
 }
 
 export default function QueueItem({ item, onRetry }: QueueItemProps) {
   const isError = item.status === 'error';
+  const width = item.status === 'done' ? 100 : item.percent;
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-neutral-800 bg-neutral-900 p-3">
+    <div className="flex items-center gap-3 rounded-lg border border-line bg-panel p-3">
       {item.thumbnail ? (
-        <img src={item.thumbnail} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
+        <img src={item.thumbnail} alt="" className="h-11 w-11 shrink-0 rounded-md object-cover" />
       ) : (
-        <div className="h-10 w-10 shrink-0 rounded bg-neutral-800" />
+        <div className="h-11 w-11 shrink-0 rounded-md bg-raised" />
       )}
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm">{item.title ?? item.url}</p>
-        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-neutral-800">
+        <p className="truncate text-sm text-cream">{item.title ?? item.url}</p>
+        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-raised">
           <div
-            className={`h-full transition-all ${isError ? 'bg-red-500' : 'bg-emerald-500'}`}
-            style={{ width: `${item.status === 'done' ? 100 : item.percent}%` }}
+            className={`h-full rounded-full transition-all duration-300 ${meterColor(item.status)}`}
+            style={{ width: `${width}%` }}
           />
         </div>
-        <p className={`mt-1 text-xs ${isError ? 'text-red-400' : 'text-neutral-500'}`}>
+        <p
+          className={`mt-1.5 font-mono text-[11px] uppercase tracking-wider ${
+            isError ? 'text-alert' : 'text-taupe'
+          }`}
+        >
           {statusLabel(item)}
         </p>
       </div>
@@ -45,7 +56,7 @@ export default function QueueItem({ item, onRetry }: QueueItemProps) {
       {isError && (
         <button
           onClick={() => onRetry(item.id)}
-          className="shrink-0 rounded-md border border-neutral-700 px-2 py-1 text-xs hover:bg-neutral-800"
+          className="shrink-0 rounded-md border border-line px-2.5 py-1 text-xs text-cream transition hover:border-glow hover:text-glow"
         >
           Tentar de novo
         </button>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import EqMark from '@/components/EqMark';
 import PasteBox from '@/components/PasteBox';
 import QueueList from '@/components/QueueList';
 import { useQueue } from '@/stores/queue.store';
@@ -39,32 +40,54 @@ export default function App() {
   const hasCompleted = items.some((item) => item.status === 'done');
 
   return (
-    <main className="flex min-h-screen flex-col items-center gap-6 bg-neutral-950 p-8 text-neutral-100">
-      <div className="text-center">
-        <h1 className="text-3xl font-semibold tracking-tight">Sonora</h1>
-        <p className="text-sm text-neutral-500">YouTube → MP3</p>
-      </div>
+    <main className="flex min-h-screen flex-col items-center gap-7 px-6 py-10">
+      <header className="flex flex-col items-center gap-2">
+        <div className="flex items-center gap-3">
+          <EqMark className="h-7" />
+          <h1 className="text-2xl font-bold uppercase tracking-[0.3em] text-cream">Sonora</h1>
+        </div>
+        <p className="text-sm text-taupe">
+          Converta vídeos do YouTube em MP3, com capa e nome certinho
+        </p>
+      </header>
 
       <PasteBox onConvert={handleConvert} />
 
-      {banner && <p className="text-sm text-red-400">{banner}</p>}
+      {banner && <p className="text-sm text-alert">{banner}</p>}
 
-      <div className="flex w-full max-w-xl items-center justify-between gap-4 text-xs text-neutral-500">
+      <div className="flex w-full max-w-xl items-center justify-between gap-4 text-xs">
         <button
           onClick={() => void window.sonora.openFolder()}
           title={outputDir}
-          className="truncate hover:text-neutral-300"
+          className="flex min-w-0 items-center gap-1.5 font-mono text-taupe transition hover:text-cream"
         >
-          📁 {outputDir || 'Pasta de saída'}
+          <span aria-hidden="true">📁</span>
+          <span className="truncate">{outputDir || 'pasta de saída'}</span>
         </button>
         {hasCompleted && (
-          <button onClick={clearCompleted} className="shrink-0 hover:text-neutral-300">
+          <button
+            onClick={clearCompleted}
+            className="shrink-0 text-taupe transition hover:text-cream"
+          >
             Limpar concluídos
           </button>
         )}
       </div>
 
-      <QueueList items={items} onRetry={(id) => void window.sonora.retry(id)} />
+      {items.length === 0 ? (
+        <div className="flex flex-col items-center gap-4 pt-6 text-center">
+          <EqMark className="h-10 opacity-30" />
+          <div className="max-w-sm">
+            <p className="text-cream">Sua fila está vazia</p>
+            <p className="mt-1 text-sm text-taupe">
+              Cole um link acima e ele vira MP3 com capa e nome — pronto pro celular, o carro, onde
+              for.
+            </p>
+          </div>
+        </div>
+      ) : (
+        <QueueList items={items} onRetry={(id) => void window.sonora.retry(id)} />
+      )}
     </main>
   );
 }
