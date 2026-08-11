@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Desktop app that converts YouTube audio to MP3 (320 kbps) with embedded metadata and cover art.",
+  "author": "Michael Andryeer",
   "type": "module",
   "main": "out/main/index.js",
   "scripts": {
@@ -10,6 +11,9 @@
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "fetch:binaries": "node scripts/fetch-binaries.mjs",
+    "dist": "npm run build && electron-builder",
+    "dist:linux": "npm run build && electron-builder --linux",
+    "dist:win": "npm run build && electron-builder --win",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

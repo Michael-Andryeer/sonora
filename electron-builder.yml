@@ -1,0 +1,24 @@
+appId: com.michaelandryeer.sonora
+productName: Sonora
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - out/**
+
+extraResources:
+  - from: resources/bin
+    to: resources/bin
+
+linux:
+  target: AppImage
+  category: AudioVideo
+
+win:
+  target: nsis
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
