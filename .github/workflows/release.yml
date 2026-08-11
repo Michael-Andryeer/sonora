@@ -41,7 +41,7 @@ jobs:
         run: npm run fetch:binaries
 
       - name: Build installer
-        run: npm run ${{ matrix.dist }}
+        run: npm run ${{ matrix.dist }} -- --publish never
 
       - name: Publish to release
         uses: softprops/action-gh-release@v2
