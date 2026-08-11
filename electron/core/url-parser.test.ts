@@ -78,6 +78,27 @@ describe('parseInput', () => {
       expect(result.kind).toBe('single');
       expect(result.urls).toEqual(['https://www.youtube.com/watch?v=dQw4w9WgXcQ']);
     });
+
+    it('accepts links separated by spaces', () => {
+      const result = parseInput('https://youtu.be/aaaaaaaaaaa https://youtu.be/bbbbbbbbbbb');
+      expect(result.kind).toBe('list');
+      expect(result.urls).toEqual([
+        'https://www.youtube.com/watch?v=aaaaaaaaaaa',
+        'https://www.youtube.com/watch?v=bbbbbbbbbbb',
+      ]);
+    });
+
+    it('accepts links separated by commas', () => {
+      const result = parseInput(
+        'https://youtu.be/aaaaaaaaaaa, https://youtu.be/bbbbbbbbbbb , https://youtu.be/ccccccccccc',
+      );
+      expect(result.kind).toBe('list');
+      expect(result.urls).toEqual([
+        'https://www.youtube.com/watch?v=aaaaaaaaaaa',
+        'https://www.youtube.com/watch?v=bbbbbbbbbbb',
+        'https://www.youtube.com/watch?v=ccccccccccc',
+      ]);
+    });
   });
 
   describe('playlist', () => {

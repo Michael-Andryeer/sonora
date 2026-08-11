@@ -47,16 +47,16 @@ function canonicalWatchUrl(id: string): string {
 }
 
 export function parseInput(text: string): ParsedInput {
-  const lines = text
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
+  const tokens = text
+    .split(/[\s,]+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 0);
 
   let playlistUrl: string | undefined;
   const ids = new Set<string>();
   const urls: string[] = [];
 
-  for (const line of lines) {
+  for (const line of tokens) {
     const playlist = extractPlaylistUrl(line);
     if (playlist) {
       playlistUrl ??= playlist;

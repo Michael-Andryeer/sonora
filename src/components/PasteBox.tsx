@@ -17,7 +17,7 @@ export default function PasteBox({ onConvert }: PasteBoxProps) {
       <textarea
         value={text}
         onChange={(event) => setText(event.target.value)}
-        placeholder="Cole um ou vários links do YouTube (um por linha), ou uma playlist…"
+        placeholder="Cole um ou vários links do YouTube (separados por espaço, vírgula ou linha), ou uma playlist…"
         rows={3}
         className="resize-none rounded-xl border border-neutral-800 bg-neutral-900 p-4 text-sm outline-none focus:border-emerald-500"
       />
