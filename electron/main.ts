@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { app, BrowserWindow, ipcMain } from 'electron';
 
 import { IpcChannel, type AppInfo } from '../shared/ipc-contract';
+import { registerConvertHandler } from './ipc/convert.handler';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 
@@ -34,6 +35,8 @@ function createWindow(): void {
 ipcMain.handle(IpcChannel.appInfo, (): AppInfo => {
   return { version: app.getVersion(), platform: process.platform };
 });
+
+registerConvertHandler();
 
 void app.whenReady().then(() => {
   createWindow();
