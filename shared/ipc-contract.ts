@@ -26,6 +26,7 @@ export interface ProgressPayload {
 
 export interface DonePayload {
   url: string;
+  outputDir: string;
 }
 
 export interface ErrorPayload {

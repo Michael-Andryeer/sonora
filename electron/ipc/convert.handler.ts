@@ -20,9 +20,11 @@ export function registerConvertHandler(): void {
       return;
     }
 
+    const outputDir = getOutputDir();
+
     try {
       await download(url, {
-        outDir: getOutputDir(),
+        outDir: outputDir,
         onProgress: (progress) => {
           const payload: ProgressPayload = {
             url,
@@ -32,7 +34,7 @@ export function registerConvertHandler(): void {
           sender.send(IpcChannel.progress, payload);
         },
       });
-      sender.send(IpcChannel.done, { url });
+      sender.send(IpcChannel.done, { url, outputDir });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       sender.send(IpcChannel.error, { url, message });
