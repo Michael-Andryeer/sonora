@@ -1,59 +1,70 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import PasteBox from '@/components/PasteBox';
+import QueueList from '@/components/QueueList';
 import { useQueue } from '@/stores/queue.store';
 
 export default function App() {
-  const { status, percent, error, outputDir, start, setProgress, setDone, setError } = useQueue();
+  const { items, init, applyMeta, applyProgress, applyDone, applyError, clearCompleted } =
+    useQueue();
+  const [outputDir, setOutputDir] = useState('');
+  const [banner, setBanner] = useState<string | null>(null);
 
   useEffect(() => {
-    const offProgress = window.sonora.onProgress((p) => setProgress(p.phase, p.percent));
-    const offDone = window.sonora.onDone((p) => setDone(p.outputDir));
-    const offError = window.sonora.onError((e) => setError(e.message));
+    window.sonora
+      .getOutputDir()
+      .then(setOutputDir)
+      .catch(() => {});
+    const offInit = window.sonora.onQueueInit((list) => init(list));
+    const offMeta = window.sonora.onMeta((p) => applyMeta(p.id, p.title, p.thumbnail));
+    const offProgress = window.sonora.onProgress((p) => applyProgress(p.id, p.phase, p.percent));
+    const offDone = window.sonora.onDone((p) => applyDone(p.id));
+    const offError = window.sonora.onError((p) => applyError(p.id, p.message));
     return () => {
+      offInit();
+      offMeta();
       offProgress();
       offDone();
       offError();
     };
-  }, [setProgress, setDone, setError]);
+  }, [init, applyMeta, applyProgress, applyDone, applyError]);
 
   const handleConvert = (text: string) => {
-    start();
-    window.sonora.convert(text).catch((e) => setError(String(e)));
+    setBanner(null);
+    window.sonora.convert(text).catch((error) => {
+      setBanner(error instanceof Error ? error.message : String(error));
+    });
   };
 
-  const busy = status === 'downloading' || status === 'converting';
+  const hasCompleted = items.some((item) => item.status === 'done');
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-neutral-950 p-8 text-neutral-100">
+    <main className="flex min-h-screen flex-col items-center gap-6 bg-neutral-950 p-8 text-neutral-100">
       <div className="text-center">
         <h1 className="text-3xl font-semibold tracking-tight">Sonora</h1>
         <p className="text-sm text-neutral-500">YouTube → MP3</p>
       </div>
 
-      <PasteBox onConvert={handleConvert} disabled={busy} />
+      <PasteBox onConvert={handleConvert} />
 
-      {status !== 'idle' && (
-        <div className="w-full max-w-xl">
-          {busy && (
-            <>
-              <div className="mb-1 text-sm text-neutral-400">
-                {status === 'downloading' ? 'Baixando' : 'Convertendo'}… {Math.round(percent)}%
-              </div>
-              <div className="h-2 w-full bg-neutral-800">
-                <div className="h-full " style={{ width: `${percent}%` }} />
-              </div>
-            </>
-          )}
-          {status === 'done' && (
-            <div className="text-sm text-emerald-400">
-              <p>✓ Pronto! Música salva em:</p>
-              <p className="mt-1 break-all font-mono text-xs text-neutral-400">{outputDir}</p>
-            </div>
-          )}
-          {status === 'error' && <p className="text-sm text-red-400">Erro: {error}</p>}
-        </div>
-      )}
+      {banner && <p className="text-sm text-red-400">{banner}</p>}
+
+      <div className="flex w-full max-w-xl items-center justify-between gap-4 text-xs text-neutral-500">
+        <button
+          onClick={() => void window.sonora.openFolder()}
+          title={outputDir}
+          className="truncate hover:text-neutral-300"
+        >
+          📁 {outputDir || 'Pasta de saída'}
+        </button>
+        {hasCompleted && (
+          <button onClick={clearCompleted} className="shrink-0 hover:text-neutral-300">
+            Limpar concluídos
+          </button>
+        )}
+      </div>
+
+      <QueueList items={items} onRetry={(id) => void window.sonora.retry(id)} />
     </main>
   );
 }

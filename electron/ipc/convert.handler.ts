@@ -1,43 +1,154 @@
-import { ipcMain } from 'electron';
+import { ipcMain, shell, type WebContents } from 'electron';
 import { z } from 'zod';
 
-import { IpcChannel, type ProgressPayload } from '../../shared/ipc-contract';
+import {
+  IpcChannel,
+  type MetaPayload,
+  type ProgressPayload,
+  type QueueItemDto,
+} from '../../shared/ipc-contract';
+import {
+  createItems,
+  isFinished,
+  nextUp,
+  setActive,
+  setDone,
+  setError,
+  setProgress,
+  type QueueItem,
+} from '../core/queue';
 import { parseInput } from '../core/url-parser';
 import { download } from '../services/downloader';
+import { expandPlaylist, fetchMeta } from '../services/metadata';
 import { getOutputDir } from '../services/settings';
 
 const textSchema = z.string().min(1);
+const idSchema = z.string();
+
+/** id -> url, so a failed item can be retried on demand. */
+const jobs = new Map<string, string>();
+
+function toDto(item: QueueItem): QueueItemDto {
+  return { id: item.id, url: item.url, status: item.status, percent: item.percent };
+}
+
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function drive(initial: QueueItem[], sender: WebContents, outputDir: string): Promise<void> {
+  return new Promise((resolve) => {
+    let items = initial;
+
+    const pump = () => {
+      if (isFinished(items)) {
+        resolve();
+        return;
+      }
+      for (const { id, url } of nextUp(items)) {
+        items = setActive(items, id);
+        sender.send(IpcChannel.progress, {
+          id,
+          phase: 'download',
+          percent: 0,
+        } satisfies ProgressPayload);
+
+        download(url, {
+          outDir: outputDir,
+          onProgress: (progress) => {
+            items = setProgress(items, id, progress.percent);
+            sender.send(IpcChannel.progress, {
+              id,
+              phase: progress.phase,
+              percent: progress.percent,
+            } satisfies ProgressPayload);
+          },
+        })
+          .then(() => {
+            items = setDone(items, id);
+            sender.send(IpcChannel.done, { id });
+          })
+          .catch((error: unknown) => {
+            items = setError(items, id, messageOf(error));
+            sender.send(IpcChannel.error, { id, message: messageOf(error) });
+          })
+          .finally(pump);
+      }
+    };
+
+    pump();
+  });
+}
 
 export function registerConvertHandler(): void {
+  ipcMain.handle(IpcChannel.outputDir, () => getOutputDir());
+  ipcMain.handle(IpcChannel.openFolder, () => shell.openPath(getOutputDir()));
+
   ipcMain.handle(IpcChannel.convert, async (event, rawText: unknown) => {
     const text = textSchema.parse(rawText);
     const parsed = parseInput(text);
-    const url = parsed.urls[0];
     const sender = event.sender;
 
-    if (!url) {
-      sender.send(IpcChannel.error, { url: '', message: 'Nenhum link válido encontrado.' });
-      return;
+    const urls =
+      parsed.kind === 'playlist' && parsed.playlistUrl
+        ? await expandPlaylist(parsed.playlistUrl)
+        : parsed.urls;
+
+    if (urls.length === 0) {
+      throw new Error('Nenhum link válido encontrado.');
     }
 
-    const outputDir = getOutputDir();
+    const items = createItems(urls);
+    jobs.clear();
+    for (const item of items) {
+      jobs.set(item.id, item.url);
+    }
+
+    sender.send(IpcChannel.queueInit, items.map(toDto));
+
+    for (const item of items) {
+      fetchMeta(item.url)
+        .then((meta) => {
+          sender.send(IpcChannel.meta, {
+            id: item.id,
+            title: meta.title,
+            thumbnail: meta.thumbnail,
+          } satisfies MetaPayload);
+        })
+        .catch(() => {
+          // metadata is best-effort; ignore failures
+        });
+    }
+
+    await drive(items, sender, getOutputDir());
+  });
+
+  ipcMain.handle(IpcChannel.retry, async (event, rawId: unknown) => {
+    const id = idSchema.parse(rawId);
+    const url = jobs.get(id);
+    if (!url) return;
+
+    const sender = event.sender;
+    sender.send(IpcChannel.progress, {
+      id,
+      phase: 'download',
+      percent: 0,
+    } satisfies ProgressPayload);
 
     try {
       await download(url, {
-        outDir: outputDir,
+        outDir: getOutputDir(),
         onProgress: (progress) => {
-          const payload: ProgressPayload = {
-            url,
+          sender.send(IpcChannel.progress, {
+            id,
             phase: progress.phase,
             percent: progress.percent,
-          };
-          sender.send(IpcChannel.progress, payload);
+          } satisfies ProgressPayload);
         },
       });
-      sender.send(IpcChannel.done, { url, outputDir });
+      sender.send(IpcChannel.done, { id });
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      sender.send(IpcChannel.error, { url, message });
+      sender.send(IpcChannel.error, { id, message: messageOf(error) });
     }
   });
 }
