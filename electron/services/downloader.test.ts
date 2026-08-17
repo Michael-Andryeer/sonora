@@ -5,12 +5,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { download } from './downloader';
 import type { ProgressEvent } from '../core/progress-parser';
 
-const { spawnMock } = vi.hoisted(() => ({ spawnMock: vi.fn() }));
+const { spawnMock, denoMock } = vi.hoisted(() => ({
+  spawnMock: vi.fn(),
+  denoMock: vi.fn(() => '/bin/deno' as string | null),
+}));
 
 vi.mock('node:child_process', () => ({ spawn: spawnMock }));
 vi.mock('./binary-manager', () => ({
   ytDlpPath: () => '/bin/yt-dlp',
   ffmpegPath: () => '/bin/ffmpeg',
+  denoPath: denoMock,
 }));
 
 function fakeProcess() {
@@ -23,8 +27,15 @@ function fakeProcess() {
   return proc;
 }
 
+/** Let the retry loop advance past a rejected attempt and spawn the next one. */
+function flush() {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 beforeEach(() => {
   spawnMock.mockReset();
+  denoMock.mockReset();
+  denoMock.mockReturnValue('/bin/deno');
 });
 
 describe('download', () => {
@@ -52,6 +63,8 @@ describe('download', () => {
     );
     expect(args).toContain('--ffmpeg-location');
     expect(args).toContain('/bin/ffmpeg');
+    expect(args).toContain('--js-runtimes');
+    expect(args).toContain('deno:/bin/deno');
     expect(args).toContain('https://www.youtube.com/watch?v=abcdefghijk');
     expect(args.some((arg) => arg.includes('/music') && arg.includes('%(title)s'))).toBe(true);
 
@@ -63,6 +76,19 @@ describe('download', () => {
       { phase: 'download', percent: 50 },
       { phase: 'convert', percent: 100 },
     ]);
+  });
+
+  it('omits --js-runtimes when no bundled deno is available', async () => {
+    denoMock.mockReturnValue(null);
+    const proc = fakeProcess();
+    spawnMock.mockReturnValue(proc);
+
+    const result = download('https://youtu.be/abcdefghijk', { outDir: '/music' });
+    const [, args] = spawnMock.mock.calls[0] as [string, string[]];
+    expect(args).not.toContain('--js-runtimes');
+
+    proc.emit('close', 0);
+    await expect(result).resolves.toEqual({ url: 'https://youtu.be/abcdefghijk' });
   });
 
   it('reassembles progress lines split across chunks', async () => {
@@ -83,7 +109,43 @@ describe('download', () => {
     expect(events).toEqual([{ phase: 'download', percent: 25 }]);
   });
 
-  it('rejects with the yt-dlp error output on a non-zero exit', async () => {
+  it('retries after a transient 403 and then resolves', async () => {
+    const proc1 = fakeProcess();
+    const proc2 = fakeProcess();
+    spawnMock.mockReturnValueOnce(proc1).mockReturnValueOnce(proc2);
+
+    const result = download('https://youtu.be/abcdefghijk', { outDir: '/music' });
+
+    proc1.stderr.emit(
+      'data',
+      Buffer.from('ERROR: unable to download video data: HTTP Error 403: Forbidden\n'),
+    );
+    proc1.emit('close', 1);
+
+    await flush();
+    proc2.emit('close', 0);
+
+    await expect(result).resolves.toEqual({ url: 'https://youtu.be/abcdefghijk' });
+    expect(spawnMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('gives up after MAX_ATTEMPTS when the failure keeps repeating', async () => {
+    spawnMock.mockImplementation(() => {
+      const proc = fakeProcess();
+      queueMicrotask(() => {
+        proc.stderr.emit('data', Buffer.from('ERROR: unable to download video data: 403\n'));
+        proc.emit('close', 1);
+      });
+      return proc;
+    });
+
+    await expect(download('https://youtu.be/abcdefghijk', { outDir: '/music' })).rejects.toThrow(
+      /403/,
+    );
+    expect(spawnMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not retry a non-transient error like an unavailable video', async () => {
     const proc = fakeProcess();
     spawnMock.mockReturnValue(proc);
 
@@ -92,6 +154,7 @@ describe('download', () => {
     proc.emit('close', 1);
 
     await expect(result).rejects.toThrow(/Video unavailable/);
+    expect(spawnMock).toHaveBeenCalledTimes(1);
   });
 
   it('rejects when the process fails to start', async () => {

@@ -31,12 +31,37 @@ const FFMPEG = {
   },
 };
 
+// Deno is the JavaScript runtime yt-dlp uses to solve YouTube's JS (nsig)
+// challenge. Without it, downloads fail with 403s or a "no JS runtime" error.
+const DENO = {
+  linux: {
+    url: 'https://github.com/denoland/deno/releases/latest/download/deno-x86_64-unknown-linux-gnu.zip',
+    out: 'deno',
+  },
+  win32: {
+    url: 'https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip',
+    out: 'deno.exe',
+  },
+};
+
 async function download(url, dest) {
   const res = await fetch(url, { redirect: 'follow' });
   if (!res.ok || !res.body) {
     throw new Error(`Download failed (${res.status}): ${url}`);
   }
   await pipeline(Readable.fromWeb(res.body), createWriteStream(dest));
+}
+
+async function unzipTo(archive, destDir, platform) {
+  if (platform === 'win32') {
+    execFileSync('powershell', [
+      '-NoProfile',
+      '-Command',
+      `Expand-Archive -Path '${archive}' -DestinationPath '${destDir}' -Force`,
+    ]);
+  } else {
+    execFileSync('unzip', ['-o', '-q', archive, '-d', destDir]);
+  }
 }
 
 async function extractFfmpeg(archive, workDir, dest, platform) {
@@ -93,6 +118,21 @@ async function main() {
     if (platform !== 'win32') await chmod(ffmpegDest, 0o755);
   } finally {
     await rm(work, { recursive: true, force: true });
+  }
+
+  const deno = DENO[platform];
+  const denoDest = join(destDir, deno.out);
+  const denoWork = await mkdtemp(join(tmpdir(), 'sonora-deno-'));
+  try {
+    console.log('Downloading deno...');
+    const archive = join(denoWork, 'deno.zip');
+    await download(deno.url, archive);
+    console.log(`Extracting deno -> ${denoDest}`);
+    await unzipTo(archive, denoWork, platform);
+    await copyFile(join(denoWork, deno.out), denoDest);
+    if (platform !== 'win32') await chmod(denoDest, 0o755);
+  } finally {
+    await rm(denoWork, { recursive: true, force: true });
   }
 
   console.log(`Done. Binaries ready in ${destDir}`);
