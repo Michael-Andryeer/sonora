@@ -1,6 +1,6 @@
 {
   "name": "sonora",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "description": "Desktop app that converts YouTube audio to MP3 (320 kbps) with embedded metadata and cover art.",
   "author": "Michael Andryeer",
