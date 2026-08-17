@@ -1,12 +1,16 @@
+import { join } from 'node:path';
+
 import { dialog, ipcMain, shell, type WebContents } from 'electron';
 import { z } from 'zod';
 
+import { DEFAULT_OUTPUT_FOLDER } from '../../shared/constants';
 import {
   IpcChannel,
   type MetaPayload,
   type ProgressPayload,
   type QueueItemDto,
 } from '../../shared/ipc-contract';
+import { isDriveRoot } from '../core/paths';
 import {
   createItems,
   isFinished,
@@ -118,6 +122,16 @@ export function registerConvertHandler(): void {
     });
     const [dir] = result.filePaths;
     if (result.canceled || !dir) {
+      return null;
+    }
+    if (isDriveRoot(dir)) {
+      await dialog.showMessageBox({
+        type: 'warning',
+        title: 'Pasta inválida',
+        message: 'Escolha uma subpasta, não a raiz do drive.',
+        detail: `Não é possível salvar direto na raiz de um drive (${dir}). Crie ou selecione uma subpasta, como ${join(dir, DEFAULT_OUTPUT_FOLDER)}.`,
+        buttons: ['OK'],
+      });
       return null;
     }
     setOutputDir(dir);
