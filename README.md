@@ -44,12 +44,12 @@ npm run fetch:binaries   # downloads yt-dlp, ffmpeg and deno into resources/bin
 npm run dev              # starts the app with hot reload
 ```
 
-| Script | What it does |
-| --- | --- |
-| `npm run lint` | ESLint |
-| `npm run format` / `format:check` | Prettier (write / check) |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm test` / `test:watch` | Vitest (run / watch) |
+| Script                            | What it does                           |
+| --------------------------------- | -------------------------------------- |
+| `npm run lint`                    | ESLint                                 |
+| `npm run format` / `format:check` | Prettier (write / check)               |
+| `npm run typecheck`               | `tsc --noEmit`                         |
+| `npm test` / `test:watch`         | Vitest (run / watch)                   |
 | `npm run dist:win` / `dist:linux` | Builds the installer for each platform |
 
 ## Status
